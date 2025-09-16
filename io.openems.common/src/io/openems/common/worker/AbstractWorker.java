@@ -33,6 +33,13 @@ public abstract class AbstractWorker {
 	private final Logger log = LoggerFactory.getLogger(AbstractWorker.class);
 
 	private final AtomicBoolean isStopped = new AtomicBoolean(false);
+
+	/**
+	 * This value is set to true, in case the thread waits for the trigger of the
+	 * next run, in case cycle time is set to
+	 * {@link AbstractWorker#ALWAYS_WAIT_FOR_TRIGGER_NEXT_RUN}.
+	 */
+	private final AtomicBoolean isWaitingForTriggerNextRun = new AtomicBoolean(false);
 	private final Mutex cycleMutex = new Mutex(false);
 
 	/**
