@@ -1,0 +1,15 @@
+{
+  "GridBuyingPrice": {
+    "Above_2500h": {
+      "GridUsagePrice": 0.15,
+      "PeakPowerPrice": 80.0
+    },
+    "Below_2500": {
+      "GridUsagePrice": 0.18,
+      "PeakPowerPrice": 100.0
+    }
+  },
+  "GridSellingPrice": 0.08,
+  "LoadProfileUnits": "kW",
+  "BatteryUnitPrice": 500
+}

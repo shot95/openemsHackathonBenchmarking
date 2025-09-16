@@ -1,0 +1,24 @@
+stages:
+  - build
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pypoetry"
+
+# Cache dependencies
+cache:
+  paths:
+    - .cache/pip
+    - .cache/pypoetry
+
+# Job for formatting check with Black
+black-format-check:
+  stage: build
+  image: python:3.12
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - pip install poetry
+    - poetry install
+  script:
+    - poetry run black -l 120 --check --diff .

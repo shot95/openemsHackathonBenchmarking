@@ -1,0 +1,157 @@
+{
+   "method":"componentJsonApi",
+   "params":{
+      "componentId":"_simulator",
+      "payload":{
+         "method":"executeSimulation",
+         "params":{
+            "components":[
+               {
+                  "factoryPid":"Scheduler.AllAlphabetically",
+                  "properties":[
+                     {
+                        "name":"id",
+                        "value":"scheduler0"
+                     }
+                  ]
+               },
+               
+               
+               {
+                "factoryPid":"Controller.Symmetric.PeakShaving",
+                "properties":[
+                   {
+                      "name":"id",
+                      "value":"40ctrlPeakShaving0"
+                   },
+                   {
+                      "name": "meter.id",
+                      "value": "meter0"
+                   },
+                   {
+                      "name": "peakShavingPower",
+                      "value": 790
+                   },
+                   {
+                      "name": "rechargePower",
+                      "value": 770
+                   },
+                   {
+                      "name": "ess.id",
+                      "value": "ess0"
+                   }
+                ]
+             },              
+               
+               {
+                "factoryPid":"Controller.Symmetric.LimitActivePower",
+                "properties":[
+                   {
+                      "name":"id",
+                      "value":"00ctrlLimitActivePower0"
+                   },
+                   {
+                      "name": "maxChargePower",
+                      "value": 184
+                   },
+                   {
+                      "name": "maxDischargePower",
+                      "value": 184
+                   },
+                   {
+                      "name": "ess.id",
+                      "value": "ess0"
+                   }
+                ]
+             },
+               
+             
+               {
+                  "factoryPid":"Simulator.GridMeter.Reacting",
+                  "properties":[
+                     {
+                        "name":"id",
+                        "value":"meter0"
+                     }
+                  ]
+               },
+               {
+                  "factoryPid":"Simulator.NRCMeter.Acting",
+                  "properties":[
+                     {
+                        "name":"id",
+                        "value":"meter1"
+                     },
+                     {
+                        "name":"alias",
+                        "value":"Consumption"
+                     },
+                     {
+                        "name":"datasource.id",
+                        "value":"_simulator"
+                     }
+                  ]
+               },
+               {
+                  "factoryPid":"Simulator.ProductionMeter.Acting",
+                  "properties":[
+                     {
+                        "name":"id",
+                        "value":"meter2"
+                     },
+                     {
+                        "name":"alias",
+                        "value":"South Roof"
+                     },
+                     {
+                        "name":"datasource.id",
+                        "value":"_simulator"
+                     }
+                  ]
+               },
+
+               {
+                  "factoryPid":"Simulator.EssSymmetric.Reacting",
+                  "properties":[
+                     {
+                        "name":"id",
+                        "value":"ess0"
+                     },
+                     {
+                        "name":"maxApparentPower",
+                        "value":184
+                     },
+                     {
+                        "name":"capacity",
+                        "value":180
+                     },
+                     {
+                        "name":"initialSoc",
+                        "value":100
+                     }
+                  ]
+               }
+            ],
+            "clock":{
+                "start":"2024-10-25T00:15:00.00Z",
+                "end":"2024-12-20T02:15:00.00Z",
+                "timeleapPerCycle":900000,
+                "executeCycleTwice":true
+            },
+            "profiles":{
+               "meter1/ActivePower": [1, 2, 3],
+               "meter2/ActivePower": [3, 2, 1]
+            },
+            "collect":[
+               "_sum/GridActivePower",
+               "_sum/GridBuyActiveEnergy", 
+               "_sum/GridSellActiveEnergy",
+               "_sum/GridActivePower", 
+               "_sum/ProductionActivePower",
+               "_sum/ConsumptionActivePower",
+               "_sum/EssSoc"
+            ]
+         }
+      }
+   }
+}
