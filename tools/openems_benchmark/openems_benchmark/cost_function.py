@@ -5,6 +5,8 @@ import json
 import math
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 
 @dataclass
@@ -17,7 +19,10 @@ class SimulationCostResult:
 
 
 def _run_reward_function(
-    json_response: Dict[str, Any], ess_config_file: str, path_cost_list_json: str, degradation_active: bool
+    json_response: Dict[str, Any],
+    ess_config_file: str,
+    path_cost_list_json: str,
+    degradation_active: bool,
 ):
     def _simulation_response_to_dataframe(result):
         result = pd.DataFrame()
@@ -45,7 +50,10 @@ def _run_reward_function(
         return power * cost
 
     def calculating_grid_usage_costs(
-        energy_from_grid: float, energy_to_grid: float, from_grid_cost: float, to_grid_cost: float
+        energy_from_grid: float,
+        energy_to_grid: float,
+        from_grid_cost: float,
+        to_grid_cost: float,
     ):
 
         grid_buying = energy_from_grid * from_grid_cost
@@ -75,17 +83,26 @@ def _run_reward_function(
             prices = cost_list["GridBuyingPrice"]["Below_2500"]
 
         if cost_list["LoadProfileUnits"] == "W":
-            prices["GridUsagePrice"] = prices["GridUsagePrice"] / 1000  # €/kWh = (€/kWh) * (kWh/1000Wh)
+            prices["GridUsagePrice"] = (
+                prices["GridUsagePrice"] / 1000
+            )  # €/kWh = (€/kWh) * (kWh/1000Wh)
             cost_list["GridSellingPrice"] = cost_list["GridSellingPrice"] / 1000
             prices["PeakPowerPrice"] = prices["PeakPowerPrice"] / 1000
         elif cost_list["LoadProfileUnits"] == "kW":
             pass
         elif cost_list["LoadProfileUnits"] == "MW":
-            prices["GridUsagePrice"] = prices["GridUsagePrice"] * 1000  # €/kWh = (€/kWh) * (1000kWh/MWh)
+            prices["GridUsagePrice"] = (
+                prices["GridUsagePrice"] * 1000
+            )  # €/kWh = (€/kWh) * (1000kWh/MWh)
             cost_list["GridSellingPrice"] = cost_list["GridSellingPrice"] * 1000
             prices["PeakPowerPrice"] = prices["PeakPowerPrice"] * 1000
 
-        return prices["GridUsagePrice"], cost_list["GridSellingPrice"], prices["PeakPowerPrice"]
+        return (
+            prices["GridUsagePrice"],
+            cost_list["GridSellingPrice"],
+            prices["PeakPowerPrice"],
+            cost_list["LoadProfileUnits"],
+        )
 
     def degradation_model(df, ess_config):
         """
@@ -146,7 +163,9 @@ def _run_reward_function(
 
         # calculating DoD
         DoD = []
-        DoD.append(0)  # appending initial value (at first timestep no discharged energy)
+        DoD.append(
+            0
+        )  # appending initial value (at first timestep no discharged energy)
         for n in range(len(df["SoC_energy"])):
             try:
                 DoD.append(abs((df["SoC"][n + 1] - df["SoC"][n])))
@@ -155,13 +174,19 @@ def _run_reward_function(
         df["DoD"] = DoD
 
         # Stress Models
-        df["s_T"] = np.exp(k_T * (T - T_ref) * (T_ref / T))  # Temperature Stress Model equation
+        df["s_T"] = np.exp(
+            k_T * (T - T_ref) * (T_ref / T)
+        )  # Temperature Stress Model equation
 
-        df["s_t"] = k_t * 900  # Time Stress Model (900 sec for 15min timestep intervals) equation
+        df["s_t"] = (
+            k_t * 900
+        )  # Time Stress Model (900 sec for 15min timestep intervals) equation
 
         df["s_SoC"] = np.exp(k_SoC * ((df["SoC"]) - 0.3))  # SoC Stress Model equation
 
-        df["s_DoD"] = np.pow(np.pow(df["DoD"], k_DoD_2) * k_DoD_1 + k_DoD_3, -1)  # DoD Stress Model equation
+        df["s_DoD"] = np.pow(
+            np.pow(df["DoD"], k_DoD_2) * k_DoD_1 + k_DoD_3, -1
+        )  # DoD Stress Model equation
 
         # degradation function
         f_d = (df["s_DoD"] + df["s_t"]) * df["s_SoC"] * df["s_T"]
@@ -205,14 +230,20 @@ def _run_reward_function(
         elif profile_unit == "kW":
             battery_cost_kwh = battery_cost_kwh  # same unit
         elif profile_unit == "MW":
-            battery_cost_kwh = battery_cost_kwh * 1000  # €/kWh = (€/kWh) * (1000kWh/MWh)
+            battery_cost_kwh = (
+                battery_cost_kwh * 1000
+            )  # €/kWh = (€/kWh) * (1000kWh/MWh)
 
         degradation_cost = []
         degradation_cost.append(0)  # initially no degradation costs
 
         for n in range(len(df) - 1):
             degradation_cost.append(
-                (df["BESS_max_capacity_degradation"][n] - df["BESS_max_capacity_degradation"][n + 1]) * battery_cost_kwh
+                (
+                    df["BESS_max_capacity_degradation"][n]
+                    - df["BESS_max_capacity_degradation"][n + 1]
+                )
+                * battery_cost_kwh
             )
         df["degradation_cost"] = degradation_cost
 
@@ -227,10 +258,14 @@ def _run_reward_function(
                 power_from_grid.append(value)
             elif value < 0:
                 power_to_grid.append(value)
-        total_from_grid = sum(power_from_grid) / 4  # divided by 4 since timestep = 15minutes
-        tota_to_grid = sum(power_to_grid) / 4  # divided by 4 since timestep = 15minutes
+        total_from_grid = (
+            sum(power_from_grid) / 4
+        )  # divided by 4 since timestep = 15minutes
+        total_to_grid = (
+            sum(power_to_grid) / 4
+        )  # divided by 4 since timestep = 15minutes
 
-        return total_from_grid, tota_to_grid
+        return total_from_grid, total_to_grid
 
     result_dict = _simulation_response_to_dataframe(json_response)
 
@@ -238,13 +273,20 @@ def _run_reward_function(
     power_max = finding_peak_power(result_dict)
 
     # Total Energy Exchanged with Grid
-    energy_from_grid, energy_to_grid = _total_Energy_FromToGrid(result_dict["_sum/GridActivePower"])
+    energy_from_grid, energy_to_grid = _total_Energy_FromToGrid(
+        result_dict["_sum/GridActivePower"]
+    )
+
+    # checking if the input time provided is at least one year
 
     # Finding full load hours to get correct grid prices
     full_load_hours = getting_full_load_hours(energy_from_grid, power_max)
 
     # getting grid usage cost according to actual power use
-    grid_usage_price, grid_selling_price, peak_power_price = grid_usage_costs(path_cost_list_json, full_load_hours)
+    grid_usage_price, grid_selling_price, peak_power_price, input_power_unit = (
+        grid_usage_costs(path_cost_list_json, full_load_hours)
+    )
+    energyUnit = input_power_unit + "h"
 
     # calculating grid usage costs
     buying, selling = calculating_grid_usage_costs(
@@ -259,21 +301,51 @@ def _run_reward_function(
         result_dict = degradation_model(result_dict, ess_config_file)
 
         # calculating degradation costs (BESS operational costs)
-        degradation_cost = calculating_degradation_cost(result_dict, path_cost_list_json)
+        degradation_cost = calculating_degradation_cost(
+            result_dict, path_cost_list_json
+        )
 
         total_system_cost = peak_power_cost + buying + degradation_cost - selling
 
     else:
         total_system_cost = peak_power_cost + buying - selling
 
+    with open(ess_config_file, "r") as f:
+        ess_config = json.load(f)
+    simStartTime = datetime.strptime(
+        ess_config["params"]["payload"]["params"]["clock"]["start"],
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+    )
+    simEndTime = datetime.strptime(
+        ess_config["params"]["payload"]["params"]["clock"]["end"],
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+    )
+    is_one_year = (
+        relativedelta(simEndTime, simStartTime).years == 1
+        and relativedelta(simEndTime, simStartTime).months == 0
+        and relativedelta(simEndTime, simStartTime).days == 0
+    )
+
     print("--------------------------------------------------------")
     print("The simulated system has the following costs:")
-    print(f"Peak power cost: {peak_power_cost}")
-    print(f"Bought from grid: {buying}")
-    print(f"Sold to grid: {selling}")
+
+    print(f"Total energy bought from gird: {energy_from_grid} {input_power_unit }h")
+    print(f"Total energy sold to grid: {energy_to_grid} {input_power_unit}h")
+    if is_one_year:
+        print(f"Peak power cost: {peak_power_cost} EUR")
+    else:
+        print(
+            f"Unable to calculate the Peak power cost. Simulate exactly one year to be able to calculate this value correctly"
+        )
     if degradation_active:
-        print(f"BESS degradation cost: {degradation_cost}")
-    print(f"Total cost: {total_system_cost}")
+        print(f"BESS degradation cost: {degradation_cost} EUR")
+    if is_one_year:
+        print(f"Total cost: {total_system_cost} EUR")
+    else:
+        print(
+            f"Unable to calculate the Total system cost, since the peak power cost could not be properly estimated."
+        )
+
     print("--------------------------------------------------------")
 
     result = SimulationCostResult(
@@ -283,12 +355,11 @@ def _run_reward_function(
         total_system_cost=total_system_cost,
         degradation_cost=degradation_cost if degradation_active else None,
     )
-    #result_dict["system costs"] = result
+    # result_dict["system costs"] = result
     result_dict["peak_power_cost"] = peak_power_cost
     result_dict["grid_buying_cost"] = buying
     result_dict["grid_selling_revenue"] = selling
     result_dict["total_system_cost"] = total_system_cost
     result_dict["degradation_cost"] = degradation_cost if degradation_active else None
-
 
     return result_dict
